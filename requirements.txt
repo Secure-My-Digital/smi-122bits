@@ -1,0 +1,19 @@
+# SMI Password Entropy Audit - Python Requirements
+# ========================================================
+# This file lists all Python package dependencies for the audit tool
+
+# Core dependency for HKDF implementation
+hkdf>=0.1.0
+
+# The following are Python standard library modules (no installation needed):
+# - math
+# - time
+# - signal
+# - sys
+# - json
+# - hashlib
+
+$Intent: List all Python package dependencies for the SMI password entropy audit tool $
+
+> *"Dependencies are the foundation of reproducibility; a missing package can crumble the strongest proof."* -- SMD Security Team [Audit Standards, 2025]
+

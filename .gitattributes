@@ -1,0 +1,25 @@
+*.txt ident
+*.pl ident
+*.pm ident
+*.*js* ident
+*.md ident
+*.sh ident
+*ocument*/** ident
+*env* filter=git-crypt diff=git-crypt
+GEMINI* filter=git-crypt diff=git-crypt
+*ipfs*/config* filter=git-crypt diff=git-crypt
+claim.* filter=git-crypt diff=git-crypt
+*account* filter=git-crypt diff=git-crypt
+*auth* filter=git-crypt diff=git-crypt
+*cred* filter=git-crypt diff=git-crypt
+*clear* filter=git-crypt diff=git-crypt
+*p*ssw*d* filter=git-crypt diff=git-crypt
+*jwt* filter=git-crypt diff=git-crypt
+*.der* filter=git-crypt diff=git-crypt
+*.pem* filter=git-crypt diff=git-crypt
+*.sec* filter=git-crypt diff=git-crypt
+*.key* filter=git-crypt diff=git-crypt
+*signa* filter=git-crypt-michelc diff=git-crypt-michelc
+secrets/** filter=git-crypt diff=git-crypt
+*.asc !filter !diff
+.gitattributes !filter !diff
