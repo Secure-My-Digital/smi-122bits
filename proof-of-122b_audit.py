@@ -28,7 +28,7 @@ DEPENDENCIES:
     - Python 3.6+
     - hkdf (pip install hkdf)
 
-$Intent: Provide auditable proof that BlockSmith passwords meet 122-bit entropy requirement $
+$Intent: Provide auditable proof that SMI passwords meet 122-bit entropy requirement $
 $Telos: Security certification and compliance verification
 
 ================================================================================
@@ -43,8 +43,11 @@ ASSUMPTIONS MADE IN THIS AUDIT:
    - SHA-256 provides sufficient entropy extraction
 
 2. KEY MATERIAL:
-   - The IKM and SALT values used in this script are the EXACT values used in
-     production (provided by Key Broker Server when audit mode is turned on)
+   - The IKM can be loaded from a .env file (AXIOM_IKM variable) or
+     environment variable, with a hardcoded fallback for testing
+   - The SALT value is hardcoded in this script
+   - The IKM and SALT values used are the EXACT values used in production
+     (provided by Key Broker Server when "Audit Mode" is turned on)
    - These values have sufficient initial entropy (IKM is a 128-bit UUID)
    - The IKM is kept secret and protected appropriately
 
@@ -74,7 +77,9 @@ WHAT THE AUDITOR MUST VERIFY:
    ✓ Verify all dependencies (hkdf, hashlib) are standard/trusted
 
 2. KEY MATERIAL:
-   ✓ Confirm IKM and SALT values match production system
+   ✓ Confirm IKM is loaded from .env file (AXIOM_IKM) or environment
+   ✓ Verify IKM value matches production system
+   ✓ Confirm SALT value matches production system
    ✓ Verify IKM is stored securely and not hardcoded in other locations
    ✓ Check that IKM has sufficient entropy (128-bit UUID is adequate)
 
@@ -126,8 +131,82 @@ import time
 import signal
 import sys
 import json
+import os
 import hashlib
 from hkdf import hkdf_extract, hkdf_expand
+
+
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
+
+def load_env_file(env_path: str = None) -> dict:
+    """Load key=value pairs from a .env file.
+    
+    Args:
+        env_path: Path to .env file. If None, checks common locations.
+        
+    Returns:
+        Dictionary of environment variables
+    """
+    if env_path is None:
+        # Try common .env file locations
+        possible_paths = ['.env', '../.env', '../../.env']
+        for path in possible_paths:
+            if os.path.exists(path):
+                env_path = path
+                break
+        else:
+            return {}
+    
+    if not os.path.exists(env_path):
+        return {}
+    
+    env_vars = {}
+    with open(env_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            # Skip empty lines and comments
+            if not line or line.startswith('#'):
+                continue
+            # Parse key=value
+            if '=' in line:
+                key, value = line.split('=', 1)
+                key = key.strip()
+                # Remove quotes if present
+                value = value.strip().strip('"\'')
+                env_vars[key] = value
+    
+    return env_vars
+
+
+def get_ikm_from_env() -> str:
+    """Get IKM from environment or .env file.
+    
+    Checks in order:
+    1. AXIOM_IKM from .env file
+    2. AXIOM_IKM from environment variables
+    3. Returns None if not found
+    
+    Returns:
+        IKM as hex string (without dashes), or None if not found
+    """
+    # Try .env file first
+    env_vars = load_env_file()
+    if 'AXIOM_IKM' in env_vars:
+        ikm = env_vars['AXIOM_IKM']
+        print(f"[INFO] Loaded IKM from .env file")
+        return ikm.replace('-', '')
+    
+    # Try environment variable
+    if 'AXIOM_IKM' in os.environ:
+        ikm = os.environ['AXIOM_IKM']
+        print(f"[INFO] Loaded IKM from environment variable")
+        return ikm.replace('-', '')
+    
+    # Not found
+    return None
+
 
 # =============================================================================
 # CONFIGURATION - These parameters define the audit scope
@@ -148,8 +227,14 @@ CONFIDENCE_SIGMA = 6
 # =============================================================================
 
 # Input Keying Material (IKM) - from Key Broker Server
-# Original: aa4c9c31-1eb1-4b3d-b989-87e086696628
-IKM_HEX = 'aa4c9c311eb14b3db98987e086696628'
+# Attempt to load from .env file or environment variable first
+IKM_HEX = get_ikm_from_env()
+
+# If not found in .env, use hardcoded value as fallback
+if IKM_HEX is None:
+    # Original: 4c6fd3a8-379e-467b-9574-25e620eba357
+    IKM_HEX = '4c6fd3a8379e467b957425e620eba357'
+    print(f"[WARNING] Using hardcoded IKM value")
 
 # Salt - from Key Broker Server  
 # Original: d9266e3c-ce25-46b6-a11f-7e7d1fe6ae23
@@ -288,7 +373,7 @@ def run_audit() -> dict:
     # Initialize results
     results = {
         'timestamp': time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime()),
-        'audit_tool': 'BlockSmith Password Entropy Audit Tool',
+        'audit_tool': 'SMI Password Entropy Audit Tool',
         'audit_version': '1.0.0',
         'security_claim': f'All passwords have at least {MIN_ENTROPY_BITS} bits of entropy',
         'configuration': {
@@ -432,7 +517,7 @@ def run_audit() -> dict:
 def main():
     """Main entry point for the audit tool."""
     print("=" * 70)
-    print("BlockSmith Password Entropy Audit Tool")
+    print("SMI Password Entropy Audit Tool")
     print("=" * 70)
     print()
     
@@ -490,7 +575,7 @@ if __name__ == '__main__':
 # --
 # "In the realm of cryptography, entropy is not a luxury, it is the foundation.
 #  A single bit of predictability can unravel a kingdom of secrets."
-# -- BlockSmith Security Team [Entropy Audit Manifesto, 2025]
+# -- SMD Security Team [Entropy Audit Manifesto, 2025]
 
 # Generated by Mistral Vibe.
 # Co-Authored-By: Mistral Vibe <vibe@mistral.ai>
