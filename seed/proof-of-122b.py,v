@@ -1,0 +1,222 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	2026.07.14.03.11.43;	author michelc;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2026.07.14.03.05.02;	author michelc;	state Exp;
+branches;
+next	;
+
+
+desc
+@the 122bit proof
+@
+
+
+1.2
+log
+@length adjusted for entropy
+@
+text
+@#!/usr/bin/env python3
+"""
+Proof that all passwords we deterministically generate in our password manager
+have at least 122-bits of Shannon Entropy.
+
+$Intent: proof all the password we deterministically generate in our password manager has at least 122-bits of Shannon Entropy $
+"""
+
+import math
+import time
+import signal
+import sys
+import hashlib
+from hkdf import hkdf_extract, hkdf_expand
+
+# Constants
+MAX_ITERATIONS = 1 << 23  # 8,388,608 iterations
+
+# Base95 alphabet: ASCII printable characters from space (32) to tilde (126)
+BASE95_ALPHABET = ''.join(chr(i) for i in range(32, 127))
+assert len(BASE95_ALPHABET) == 95
+
+# Secret keys
+IKM_HEX = '4c6fd3a8379e467b957425e620eba357'
+SALT_HEX = 'd9266e3cce2546b6a11f7e7d1fe6ae23'
+
+# Key length calculation: ~122 bit + 6 sigma + (hash-margin ~ 8c)
+MIN_ENTROPY_BITS =  122 + 6 * 3.823640  + 57
+len_bytes = int( (MIN_ENTROPY_BITS + 7 ) / 8 )
+
+print(f"len: {len_bytes}B -> {len_bytes*8/math.log2(95):.1f}chars")
+
+
+def base95_encode(data: bytes, min_length: int = None) -> str:
+    """Encode bytes to base95 string using ASCII printable characters (space to ~).
+    
+    Uses big integer encoding and pads to minimum length to preserve all entropy.
+    Each output character encodes approximately 6.57 bits (log2(95)).
+    """
+    if len(data) == 0:
+        return ''
+    
+    alphabet_len = len(BASE95_ALPHABET)
+    num = int.from_bytes(data, byteorder='big')
+    
+    result = []
+    
+    # Handle all zeros case
+    if num == 0:
+        # Need to return a string with enough characters to preserve entropy
+        if min_length is None:
+            min_length = math.ceil(len(data) * 8 / math.log2(alphabet_len))
+        return BASE95_ALPHABET[0] * min_length
+    
+    # Encode
+    while num > 0:
+        num, remainder = divmod(num, alphabet_len)
+        result.append(BASE95_ALPHABET[remainder])
+    
+    encoded = ''.join(reversed(result))
+    
+    # Pad to minimum length if specified
+    if min_length is not None and len(encoded) < min_length:
+        padding = BASE95_ALPHABET[0] * (min_length - len(encoded))
+        encoded = padding + encoded
+    
+    return encoded
+
+
+def shannon_entropy(data: str) -> float:
+    """Calculate Shannon entropy of a string in bits."""
+    if not data:
+        return 0.0
+    
+    # Count frequency of each character
+    freq = {}
+    for char in data:
+        freq[char] = freq.get(char, 0) + 1
+    
+    length = len(data)
+    entropy = 0.0
+    
+    # Calculate Shannon entropy: -Σ p(x) * log2(p(x))
+    for count in freq.values():
+        p = count / length
+        if p > 0:
+            entropy -= p * math.log2(p)
+    
+    # Return total entropy in bits (not bits per symbol)
+    return entropy * length
+
+
+def main():
+    # Convert hex strings to bytes
+    ikm = bytes.fromhex(IKM_HEX)
+    salt = bytes.fromhex(SALT_HEX)
+    info_prefix = f"okm:v1:{len_bytes}:proof of entropy"
+    
+    # HKDF extract phase
+    prk = hkdf_extract(salt, ikm, hash=hashlib.sha256)
+    print(f"prk: {prk.hex()}")
+    
+    # Clear IKM from memory (best effort)
+    del ikm
+    
+    # Welford's online algorithm for mean and variance (O(1) memory)
+    n = 0
+    mean = 0.0
+    M2 = 0.0  # Sum of squared differences from mean
+    min_entropy = float('inf')
+    max_entropy = float('-inf')
+    interrupted = False
+    
+    # Catch Ctrl+C to exit gracefully
+    def signal_handler(sig, frame):
+        nonlocal interrupted
+        interrupted = True
+        print("\n^ C caught, finishing current iteration...", file=sys.stderr)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    
+    start_time = time.time()
+    
+    # Calculate expected minimum length for base95 encoding
+    bits_per_char = math.log2(len(BASE95_ALPHABET))
+    min_b95_length = math.ceil(len_bytes * 8 / bits_per_char)
+    
+    # Main loop
+    while n < MAX_ITERATIONS and not interrupted:
+        # HKDF expand phase
+        info = f"{info_prefix}{n}".encode('utf-8')
+        okm = hkdf_expand(prk, info, length=len_bytes, hash=hashlib.sha256)
+        
+        # Encode to base95 with padding to preserve all entropy
+        pw = base95_encode(okm, min_length=min_b95_length)
+        
+        # Calculate entropy
+        entropy = shannon_entropy(pw)
+        
+        # Update min/max
+        if entropy < min_entropy:
+            min_entropy = entropy
+        if entropy > max_entropy:
+            max_entropy = entropy
+        
+        # Welford's algorithm
+        n += 1
+        delta = entropy - mean
+        mean += delta / n
+        delta2 = entropy - mean
+        M2 += delta * delta2
+        
+        # Progress display every 300 iterations
+        if n % 16000 == 1:
+            current_stddev = math.sqrt(M2 / n) if n > 0 else 0
+            print(f"\rpw{n}: {pw} # {len(pw)}chars {entropy:.2f}bits -> avg:{mean:.4f} stdev:{current_stddev:.4f} len:{(122+6*current_stddev):.1f}bits", end='', flush=True)
+        
+        # Die if entropy < 122
+        if entropy < 122:
+            print(f"\nERROR: Entropy {entropy:.2f} bits is less than 122 bits!", file=sys.stderr)
+            sys.exit(1)
+    
+    print("\n")
+    
+    # Compute final statistics
+    variance = M2 / n if n > 0 else 0
+    stddev = math.sqrt(variance)
+    
+    elapsed = time.time() - start_time
+    rate = n / elapsed if elapsed > 0 else 0
+    
+    print(f"\nStatistics for {n} iterations:")
+    print(f"  Average entropy: {mean:.3f} bits")
+    print(f"  Variance: {variance:.6f} bits^2")
+    print(f"  Std deviation: {stddev:.6f} bits")
+    print(f"  Min: {min_entropy:.3f} bits")
+    print(f"  Max: {max_entropy:.3f} bits")
+    print(f"rate: {rate:.1f}h/s")
+
+
+if __name__ == '__main__':
+    main()
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d28 1
+a28 1
+MIN_ENTROPY_BITS =  122 + 6 * 3.823640  + 55
+@

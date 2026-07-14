@@ -1,0 +1,94 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	2026.07.14.04.08.45;	author michelc;	state Exp;
+branches;
+next	;
+
+
+desc
+@base95 bijective encoding
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+use strict;
+use warnings;
+use Math::BigInt;
+
+our $ALPHABET = join '', map { chr } 32 .. 126;
+my $RADIX = length($ALPHABET);
+# Build a lookup table for faster decoding indices (k-enumeration)
+my %CHAR_TO_VAL = map { substr($ALPHABET, $_, 1) => $_ + 1 } 0 .. ($RADIX - 1);
+printf "ab: %s # %dc\n",$ALPHABET,$RADIX unless $RADIX == 95;
+
+sub encode_ascii {
+  my $data = join'',@@_;
+  my $mod = Math::BigInt->new($RADIX);
+
+  my $h = '0x'.unpack('H*',$data);
+  my $n = Math::BigInt->from_hex($h);
+  my $e = '';
+  while ($n->bcmp(0) == +1)  {
+    my $c = Math::BigInt->new();
+    ($n,$c) = $n->bdiv($mod);
+    if ($c->bcmp(0) == 0) {
+      $n->bsub(1);
+      $c = $mod->copy();
+    }
+    $e .= substr($ALPHABET,$c->numify-1,1);
+    
+  }
+  return scalar reverse $e;
+}
+
+sub decode_ascii {
+    my ($str) = @@_;
+    return '' if !defined $str or $str eq '';
+
+    my $n = Math::BigInt->new(0);
+    my $base = Math::BigInt->new($RADIX);
+
+    # Bijective decoding: reconstruct the BigInt base-95 positional value
+    for my $char (split //, $str) {
+        my $val = $CHAR_TO_VAL{$char};
+        die "Invalid character '$char' not in alphabet" if !defined $val;
+
+        $n->bmul($base);
+        $n->badd($val);
+    }
+
+    # Convert the BigInt back to raw binary bytes
+    my $hex = $n->as_hex();
+    $hex =~ s/^0x//;
+    
+    # Pad hex string to ensure unpack works properly on full bytes
+    if (length($hex) % 2 != 0) {
+        $hex = '0' . $hex;
+    }
+
+    return pack('H*', $hex);
+}
+
+my $a = 'f66add8d-6b11-46be-a30c-00a2a78d21e0' =~ y/-//dr;
+my $b = pack'H*',$a;
+my $e = encode_ascii($b);
+my $d = decode_ascii($e);
+printf "e=%s # d=%s\n",$e,unpack'H*',$d;
+die if $d ne $b;
+exit $?;
+
+1;
+
+
+@
