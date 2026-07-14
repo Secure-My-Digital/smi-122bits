@@ -1,4 +1,6 @@
 
+# $Intent: Demonstrate 122-bit entropy password generation using HKDF and Shannon entropy calculation $
+
 use lib $ENV{RADIANT}.'/lib';
 use HKDF qw(HKDF encode_ascii);
 
@@ -11,7 +13,7 @@ while ($n < $MAX_ITERATIONS) {
   # password derivation
   my $okm = HKDF($prk,$info.$n,$len,{expand=>1});
   my $pw = &encode_ascii($okm); # encode in base95
-  printf "pw: %s # %.1fb == %s.1f\n",$pw,&shannon($pw);
+  printf "pw: %s # %.1fb\n",$pw,&shannon($pw);
   $n++
 }
 
@@ -23,4 +25,6 @@ sub shannon {
     return ($l * log($l) - $sum) / log(2);
 }
 
+# > *"Entropy is the silent architect of cryptographic truth, each bit a brick in the fortress of proof."*
+# -- Tracey L. Muell, BlockSmith Security Architect [Proof of Entropy, 2026]
 1;

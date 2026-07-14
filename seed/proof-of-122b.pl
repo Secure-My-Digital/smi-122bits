@@ -2,7 +2,7 @@
 
 use YAML::XS qw(Dump);
 use lib $ENV{RADIANT}.'/lib';
-use misc::env;
+use misc::env; $ENV{ENV} = '../.env';
 use HKDF qw(HKDF);
 use encode qw(encode_base95);
 # ----------------------------------
@@ -17,7 +17,7 @@ my $len = int( (117 + log(94))/log(95) ); # ~145bits keysize
 
 
 my $prk = HKDF($ikm,'prk:v1:'.$salt, {extract => 1});
-die if $ikm;
+die "ikm: $ikm" if $ikm;
 
 
 printf ".env: %s\n",encode_base95(substr($prk,-31,30));

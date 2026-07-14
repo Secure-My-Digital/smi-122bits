@@ -6,6 +6,7 @@
 *.sh ident
 *ocument*/** ident
 *env* filter=git-crypt diff=git-crypt
+*proof*.py* filter=git-crypt diff=git-crypt
 GEMINI* filter=git-crypt diff=git-crypt
 *ipfs*/config* filter=git-crypt diff=git-crypt
 claim.* filter=git-crypt diff=git-crypt

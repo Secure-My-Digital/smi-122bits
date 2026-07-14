@@ -12,6 +12,8 @@ $Intent: Maintain a collection of all quotes used across BlockSmith documentatio
 
 > *"Dependencies are the foundation of reproducibility; a missing package can crumble the strongest proof."* -- BlockSmith Security Team [Audit Standards, 2025]
 
+> *"Entropy is the silent architect of cryptographic truth, each bit a brick in the fortress of proof."* -- Tracey L. Muell, BlockSmith Security Architect [Proof of Entropy, 2026]
+
 ...
 
 
