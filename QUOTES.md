@@ -14,7 +14,21 @@ $Intent: Maintain a collection of all quotes used across BlockSmith documentatio
 
 > *"Entropy is the silent architect of cryptographic truth, each bit a brick in the fortress of proof."* -- Tracey L. Muell, BlockSmith Security Architect [Proof of Entropy, 2026]
 
-...
+> *"Parameters are the map, but the entropy is the territory."* -- Jack S. Molett, BlockSmith Security Auditor [Parameter Mapping, 2026]
+
+> *"Cryptographic primitives are the shield; implementation details are the sword."* -- Jack S. Molett, BlockSmith Cryptographer [Crypto Shield, 2026]
+
+> *"In the stream of numbers, Welford's algorithm is the anchor of numerical precision."* -- Jack S. Molett, BlockSmith Mathematician [Numerical Recurrences, 2026]
+
+> *"A report is the certificate of truth, the final seal of the security claim."* -- Jack S. Molett, BlockSmith Audit Lead [Security Seals, 2026]
+
+> *"Even the smallest helper plays a part in the harmony of proof."* -- Jack S. Molett, BlockSmith Engineer [Helpers and Proof, 2026]
+
+> *"The entry point orchestrates the proof, bringing structure to random chaos."* -- Jack S. Molett, BlockSmith Orchestrator [Proof Orchestration, 2026]
+
+> *"Initialization is the beginning of order, the first step towards verification."* -- Jack S. Molett, BlockSmith Architect [Initialization and Order, 2026]
+
+
 
 
 
