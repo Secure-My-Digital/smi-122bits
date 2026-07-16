@@ -35,9 +35,9 @@ pip install -r requirements.txt
 
 ## Files in This Package
 
-| File | Purpose |
-|------|---------|
-| `proof-of-122b_audit.py` | Main audit script - runs the entropy verification |
+| File                   | Purpose                                            |
+|------------------------|----------------------------------------------------|
+| `run_audit.py` | Main audit script - runs the entropy verification  |
 | `entropy_audit_*.json` | Generated audit reports (created when script runs) |
 
 ## Quick Start
@@ -56,10 +56,10 @@ pip install hkdf
 
 ```bash
 # Run the full audit (1 million iterations)
-python3 proof-of-122b_audit.py
+python3 run_audit.py
 
 # Run a quick test (100 iterations) for verification
-python3 -c "import proof_of_122b_audit; proof_of_122b_audit.MAX_ITERATIONS = 100; proof_of_122b_audit.main()"
+python3 -c "import run_audit; run_audit.MAX_ITERATIONS = 100; run_audit.main()"
 ```
 
 ### Expected Output
@@ -72,7 +72,7 @@ The script will:
 
 ## For Auditors
 
-Please read the comprehensive Auditor Guide at the top of `proof-of-122b_audit.py` which explains:
+Please read the comprehensive Auditor Guide at the top of `run_audit.py` which explains:
 - All assumptions made in this audit
 - What you need to verify
 - Limitations of the methodology
