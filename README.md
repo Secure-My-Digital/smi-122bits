@@ -24,6 +24,8 @@ To access the protected Python script containing the algorithm details, auditors
 gpg --decrypt local.key.asc | git-crypt unlock -
 ```
 
+> ask for the password
+
 This will unlock the encrypted files and allow you to inspect the password generation algorithm implementation.
 
 ## Contact
