@@ -1,25 +1,37 @@
 # $Intent: Manage CLI banners and final audit reports saving to JSON and stdout $
 
+
+# CONFIGURATION
+#from __main__ import MAX_ITERATIONS, MIN_ENTROPY_BITS, CONFIDENCE_SIGMA,
+MAX_ITERATIONS = 1_000_000
+MIN_ENTROPY_BITS = 122.0
+CONFIDENCE_SIGMA = 6 * 3.8205
+HASH_MARGIN_BITS = 12
+
+
 def banner():
     print("=" * 70)
     print("SMI Password Entropy Audit Tool")
     print("=" * 70)
     print()
+    print(f"Starting audit: Testing {MAX_ITERATIONS:,} passwords...")
+    print(f"Target: >= {MIN_ENTROPY_BITS} bits of entropy per password")
+    print(f"suggested len_bytes: { int((MIN_ENTROPY_BITS + CONFIDENCE_SIGMA + HASH_MARGIN_BITS + 7 ) / 8 ) }B")
 
 def summary(stats):
     import time
     import json
     import sys
     import math
-    from crypto import MAX_ITERATIONS, MIN_ENTROPY_BITS, CONFIDENCE_SIGMA, len_bytes, min_password_length, BASE95_ALPHABET, SALT_HEX
-    import crypto
-    
+    #import crypto
+    from crypto import len_bytes, min_password_length, alpha_radix, SALT_HEX, get_ikm_from_env, prk_hex, prk_proof
+
     # Final calculations
     elapsed = time.time() - stats.start_time
     rate = stats.n / elapsed if elapsed > 0 else 0
     variance = stats.M2 / stats.n if stats.n > 0 else 0
     stddev = math.sqrt(variance)
-    
+
     results = {
         'timestamp': time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime()),
         'audit_tool': 'SMI Password Entropy Audit Tool',
@@ -31,14 +43,14 @@ def summary(stats):
             'confidence_sigma': CONFIDENCE_SIGMA,
             'key_length_bytes': len_bytes,
             'password_length_chars': min_password_length,
-            'base95_alphabet_size': len(BASE95_ALPHABET),
+            'base_alphabet_size': alpha_radix,
             'hash_algorithm': 'SHA-256',
         },
         'keys': {
-            'ikm_hex': crypto.get_ikm_from_env() or '4c6fd3a8379e467b957425e620eba357',
+            'ikm_hex': get_ikm_from_env() or '4c6fd3a8379e467b957425e620eba357',
             'salt_hex': SALT_HEX,
-            'prk_hex': crypto.prk_hex,
-            'prk_proof': crypto.prk_proof,
+            'prk_hex': prk_hex,
+            'prk_proof': prk_proof,
         },
         'statistics': {
             'total_tested': stats.n,
@@ -54,7 +66,7 @@ def summary(stats):
         },
         'verdict': None,
     }
-    
+
     if stats.failures > 0:
         results['verdict'] = 'FAILED'
         results['verdict_message'] = f"{stats.failures} out of {stats.n} passwords failed the entropy test"
@@ -73,7 +85,7 @@ def summary(stats):
             f"With {CONFIDENCE_SIGMA}-sigma confidence ({100*(1 - 2*(1-0.5*math.erfc(CONFIDENCE_SIGMA/math.sqrt(2)))):.4f}% confidence level), "
             f"the true minimum is >= {stats.min_entropy - confidence_bound:.2f} bits."
         )
-        
+
     print()
     print("=" * 70)
     print("AUDIT RESULTS")
@@ -97,14 +109,14 @@ def summary(stats):
     for key, val in results['keys'].items():
         print(f"  {key}: {val}")
     print()
-    
+
     report_filename = f"entropy_audit_{results['timestamp'].replace(' ', '_').replace(':', '-')}.json"
     with open(report_filename, 'w') as f:
         json.dump(results, f, indent=2)
-    
+
     print(f"Full report saved to: {report_filename}")
     print()
-    
+
     if results['verdict'] == 'PASSED':
         print("✓ Security claim verified: All passwords have >= 122 bits of entropy")
         sys.exit(0)

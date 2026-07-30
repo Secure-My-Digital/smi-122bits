@@ -92,7 +92,7 @@ Please read the comprehensive Auditor Guide at the top of `run_audit.py` which e
 ```
 1. HKDF-Extract(SHA-256, SALT, IKM) -> PRK
 2. HKDF-Expand(SHA-256, PRK, info, len_bytes) -> OKM
-3. Base95-Encode(OKM) -> Password String
+3. Base91-Encode(OKM) -> Password String
 ```
 
 ### Entropy Calculation
@@ -105,11 +105,11 @@ where:
 ```
 
 ### Parameters
-- IKM: 128-bit UUID (16 bytes)
+- IKM: 128-bit UUID (16 bytes) requirement: High min-entropy + high compute cost (sourced by peppered argon2)
 - SALT: 128-bit UUID (16 bytes)
 - PRK: 32 bytes (SHA-256 output)
-- OKM: 27 bytes (calculated to ensure >= 122 bits after Base95 encoding)
-- Password: ~33 Base95 characters
+- OKM: 27 bytes (calculated to ensure >= 122 bits after Base91 encoding)
+- Password: ~33 Base91 characters
 
 ## Reproducibility
 

@@ -6,6 +6,7 @@
 *.sh ident
 *ocument*/** ident
 *env* filter=git-crypt diff=git-crypt
+*95.* filter=git-crypt diff=git-crypt
 *crypto*.py* filter=git-crypt diff=git-crypt
 *proof*.py* filter=git-crypt diff=git-crypt
 *audit.py* -filtert -diff
