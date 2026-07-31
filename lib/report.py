@@ -47,9 +47,9 @@ def summary(stats):
             'hash_algorithm': 'SHA-256',
         },
         'keys': {
-            'ikm_hex': get_ikm_from_env() or '4c6fd3a8379e467b957425e620eba357',
+            #'ikm_hex': get_ikm_from_env() or '4c6fd3a8379e467b957425e620eba357',
             'salt_hex': SALT_HEX,
-            'prk_hex': prk_hex,
+            #'prk_hex': prk_hex,
             'prk_proof': prk_proof,
         },
         'statistics': {

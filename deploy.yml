@@ -1,0 +1,20 @@
+publish:
+  files:
+   - README.md
+   - AUDIT_README.md
+   - requirements.txt
+   - misc/smi-password.py
+   - minimal.py
+   - run_audit.py
+   - crypto.py
+   - misc/base95.py
+   - misc/crypto91.py
+   - misc/crypto95.py
+   - lib/encodings.py
+   - lib/entropy.py
+   - lib/report.py
+   - lib/util.py
+   - lib/__init__.py
+   - server/peppered-env.pl
+   - TODO.md
+   - qm.log
