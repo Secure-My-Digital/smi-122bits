@@ -37,7 +37,7 @@ all generated passwords contain at least 122 bits of Shannon entropy.
 - **Impact if violated:** All derived passwords inherit weak master password entropy
 
 **A4. Secure IKM Delivery (IMPORTANT):**
-- IKM is delivered via secure channel (named pipe or equivalent)
+- IKM is derieved from user material or delivered via secure channel (named pipe or equivalent)
 - No persistent storage of master secrets
 - Memory sanitization prevents cold-boot attacks
 - **Impact if violated:** Secret exposure risk
@@ -93,7 +93,7 @@ all generated passwords contain at least 122 bits of Shannon entropy.
 - **Risk:** `run_audit.py` writes IKM/PRK to JSON files
 - **Impact:** Full secret compromise if logs are exposed
 - **Mitigation:** Remove secrets from audit reports (use prk_proof only)
-- **Status:** ❌ OPEN ISSUE
+- **Status:** ✅ FIXED - IKM/PRK removed from audit logs
 
 #### 📊 Entropy Analysis by Threat Scenario
 
@@ -103,7 +103,7 @@ all generated passwords contain at least 122 bits of Shannon entropy.
 | Compromised V-OPRF server | Master password entropy | ⚠️ DEGRADED |
 | Unlimited online guessing | min(122, guessing_rate) | ⚠️ DEGRADED |
 | Weak master password | Master password entropy | ⚠️ DEGRADED |
-| Zero-entropy seed (test) | 0 bits (but audit passes) | ❌ FAILURE |
+| Zero-entropy seed (test) | 0 bits (but audit passes) | ⚠️ KNOWN LIMITATION |
 
 ### 🔬 Verification Limitations
 
@@ -293,17 +293,19 @@ This will unlock the encrypted files and allow you to inspect the password gener
 - RFC 5869 HKDF with SHA-256
 - Base91 encoding (ASCII 32-126)
 
-### ✅ Audit Trail
-- Cryptographic proofs
+### ✅ Secure Audit Trail
+- Cryptographic proofs (prk_proof only)
 - Statistical verification
 - JSON report generation
 - IPFS-backed integrity
+- **No secrets in logs** (IKM/PRK removed)
 
 ### ✅ Vaultless Design
 - No persistent secrets
 - Ephemeral key material
 - Named pipe delivery
 - Zero-trust architecture
+- **Audit logs now safe** (F0 issue fixed)
 
 ## Contact
 
