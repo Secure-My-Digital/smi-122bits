@@ -1,12 +1,72 @@
 # $Intent: Manage CLI banners and final audit reports saving to JSON and stdout $
+#
+# F0 remediation (CRITICAL — secret-at-rest):
+#   The audit report must NEVER contain secret key material (IKM, raw PRK, OKM,
+#   the master password, or the server seed). Earlier revisions leaked
+#   `ikm_hex` and `prk_hex` into the on-disk JSON, which is sufficient to
+#   regenerate every password. This module now:
+#     1. imports NO secret from crypto (only public config + the non-reversible
+#        prk_proof commitment);
+#     2. enforces a fail-closed guard (`_assert_no_secrets`) that refuses to
+#        emit any secret-looking field — so a future edit cannot silently
+#        reintroduce the leak;
+#     3. writes the report file with 0600 permissions.
+
+import os
+import re
+import stat
 
 
 # CONFIGURATION
-#from __main__ import MAX_ITERATIONS, MIN_ENTROPY_BITS, CONFIDENCE_SIGMA,
 MAX_ITERATIONS = 1_000_000
 MIN_ENTROPY_BITS = 122.0
-CONFIDENCE_SIGMA = 6 * 3.8205
-HASH_MARGIN_BITS = 12
+# F7: the previous CONFIDENCE_SIGMA (= 6*3.8205 ≈ 22.9) and the "sigma ⇒
+# 99.999999% confidence" statement were meaningless — sampling per-string
+# character variety cannot bound guessing entropy. Removed. The entropy
+# guarantee comes from the architectural checks (F1) + pipeline capacity (F6),
+# not from these descriptive statistics.
+
+
+# --- F0 guard ---------------------------------------------------------------
+# Whole-key names that carry secret material and must never appear in a
+# written/printed report. Matched with fullmatch(), so benign fields that merely
+# CONTAIN one of these words (e.g. `password_length_chars`, `security_claim`,
+# `key_length_bytes`) are NOT flagged. `prk_proof` (a non-reversible HKDF
+# commitment) and `salt_hex` (public salt) are intentionally allowed.
+_SECRET_KEY_RE = re.compile(
+    r'(?:.*_)?'                                            # optional prefix
+    r'(?:ikm|okm|raw_?prk|prk_hex|prk_bytes|seed|secret|'
+    r'password|passphrase|master_?password|master_?key|private_?key)'
+    r'(?:_(?:hex|b64|bytes|raw))?',                        # optional encoding suffix
+    re.IGNORECASE,
+)
+
+
+def _assert_no_secrets(obj, path='report'):
+    """Fail closed if any secret-bearing field name is present (F0)."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if _SECRET_KEY_RE.fullmatch(str(k)):
+                raise SystemExit(
+                    f"[F0] Refusing to emit secret-looking field '{path}.{k}'. "
+                    f"Audit reports must not contain key material."
+                )
+            _assert_no_secrets(v, f"{path}.{k}")
+    elif isinstance(obj, (list, tuple)):
+        for i, v in enumerate(obj):
+            _assert_no_secrets(v, f"{path}[{i}]")
+
+
+def _write_report_secure(filename, text):
+    """Create the report file readable only by the owner (0600)."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    fd = os.open(filename, flags, 0o600)
+    try:
+        os.write(fd, text.encode('utf-8'))
+    finally:
+        os.close(fd)
+    # Defensive: enforce perms even if the file pre-existed with a looser mode.
+    os.chmod(filename, stat.S_IRUSR | stat.S_IWUSR)
 
 
 def banner():
@@ -16,15 +76,17 @@ def banner():
     print()
     print(f"Starting audit: Testing {MAX_ITERATIONS:,} passwords...")
     print(f"Target: >= {MIN_ENTROPY_BITS} bits of entropy per password")
-    print(f"suggested len_bytes: { int((MIN_ENTROPY_BITS + CONFIDENCE_SIGMA + HASH_MARGIN_BITS + 7 ) / 8 ) }B")
+
 
 def summary(stats):
     import time
     import json
     import sys
     import math
-    #import crypto
-    from crypto import len_bytes, min_password_length, alpha_radix, SALT_HEX, get_ikm_from_env, prk_hex, prk_proof
+    # F0: import ONLY public config and the non-reversible proof.
+    # Do NOT import get_ikm_from_env / prk_hex here — the report has no
+    # legitimate use for secret material.
+    from crypto import len_bytes, min_password_length, alpha_radix, SALT_HEX, prk_proof
 
     # Final calculations
     elapsed = time.time() - stats.start_time
@@ -40,16 +102,18 @@ def summary(stats):
         'configuration': {
             'max_iterations': MAX_ITERATIONS,
             'min_entropy_bits': MIN_ENTROPY_BITS,
-            'confidence_sigma': CONFIDENCE_SIGMA,
             'key_length_bytes': len_bytes,
             'password_length_chars': min_password_length,
             'base_alphabet_size': alpha_radix,
             'hash_algorithm': 'SHA-256',
         },
-        'keys': {
-            #'ikm_hex': get_ikm_from_env() or '4c6fd3a8379e467b957425e620eba357',
+        # F0: non-sensitive verification material only.
+        #   salt_hex  - public salt (not secret)
+        #   prk_proof - HKDF-derived, non-reversible commitment that lets an
+        #               auditor confirm the SAME IKM/SALT was used, WITHOUT
+        #               revealing the IKM or the PRK.
+        'verification': {
             'salt_hex': SALT_HEX,
-            #'prk_hex': prk_hex,
             'prk_proof': prk_proof,
         },
         'statistics': {
@@ -79,12 +143,19 @@ def summary(stats):
         results['verdict_message'] = f"Audit interrupted after {stats.n:,} tests"
     else:
         results['verdict'] = 'PASSED'
-        confidence_bound = CONFIDENCE_SIGMA * stddev
+        # F7: no fabricated statistical confidence. State plainly what was
+        # observed and where the guarantee actually comes from.
         results['verdict_message'] = (
-            f"All {stats.n:,} passwords tested have >= {MIN_ENTROPY_BITS} bits of entropy. "
-            f"With {CONFIDENCE_SIGMA}-sigma confidence ({100*(1 - 2*(1-0.5*math.erfc(CONFIDENCE_SIGMA/math.sqrt(2)))):.4f}% confidence level), "
-            f"the true minimum is >= {stats.min_entropy - confidence_bound:.2f} bits."
+            f"Architectural checks passed and all {stats.n:,} sampled passwords "
+            f"had per-string Shannon >= {MIN_ENTROPY_BITS} bits. "
+            f"Note: per-string Shannon is a DESCRIPTIVE statistic, not a bound on "
+            f"guessing entropy; the >= {MIN_ENTROPY_BITS}-bit guarantee rests on the "
+            f"architectural checks (seed/capacity/seed-dependence) and pipeline "
+            f"capacity, not on this sampling."
         )
+
+    # F0: fail closed before ANY output if a secret-looking field slipped in.
+    _assert_no_secrets(results)
 
     print()
     print("=" * 70)
@@ -105,16 +176,15 @@ def summary(stats):
         else:
             print(f"  {key}: {val}")
     print()
-    print("Keys:")
-    for key, val in results['keys'].items():
+    print("Verification (non-sensitive):")
+    for key, val in results['verification'].items():
         print(f"  {key}: {val}")
     print()
 
     report_filename = f"entropy_audit_{results['timestamp'].replace(' ', '_').replace(':', '-')}.json"
-    with open(report_filename, 'w') as f:
-        json.dump(results, f, indent=2)
+    _write_report_secure(report_filename, json.dumps(results, indent=2))
 
-    print(f"Full report saved to: {report_filename}")
+    print(f"Full report saved to: {report_filename} (mode 0600, no secrets)")
     print()
 
     if results['verdict'] == 'PASSED':
