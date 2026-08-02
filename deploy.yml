@@ -1,20 +1,28 @@
 publish:
+  # N1: authoritative, complete list of files shipped to auditors.
+  # (Removed the deleted misc/smi-password.py and the superseded base95/crypto9x
+  #  variants; added the wired-in modules: spec, salts, audit_checks,
+  #  password_policy, oprf_client, plus SPEC.md and the honest-claim/docs.)
   files:
    - README.md
    - AUDIT_README.md
+   - SPEC.md
+   - smi-honest-security-claim.md
    - requirements.txt
-   - misc/smi-password.py
-   - minimal.py
+   - TODO.md
    - run_audit.py
+   - minimal.py
    - crypto.py
-   - misc/base95.py
-   - misc/crypto91.py
-   - misc/crypto95.py
+   - server/peppered-env.pl
+   - lib/__init__.py
+   - lib/spec.py
+   - lib/salts.py
+   - lib/audit_checks.py
+   - lib/password_policy.py
+   - lib/oprf_client.py
    - lib/encodings.py
    - lib/entropy.py
    - lib/report.py
    - lib/util.py
-   - lib/__init__.py
-   - server/peppered-env.pl
-   - TODO.md
-   - qm.log
+   - docs/entropy_analysis.md
+   - docs/beyond-shannon.md
