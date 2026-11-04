@@ -1,1 +1,3 @@
 read the @code-release.json file, make a detailed security audit of the code, then validate our security claims
+
+if argon2 python module have "immutable" str for interface can we run an external rust /goland program to provide form the IKM ? and safely import it to python ? how ?

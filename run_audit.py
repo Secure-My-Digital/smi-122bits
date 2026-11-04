@@ -17,7 +17,7 @@ from crypto import (load_ikm, derive_prk, generate_password,
                     len_bytes, alpha_radix)
 from lib.spec import info
 from lib.salts import hkdf_salt
-from lib.entropy import Welford, shannon_entropy
+from lib.entropy import Welford, compute_all_entropies
 from lib.report import banner, summary, MAX_ITERATIONS
 from lib.audit_checks import verify_architecture
 
@@ -47,7 +47,7 @@ def main():
     prk = derive_prk(ikm)
     stats = Welford()
     for i in range(MAX_ITERATIONS):
-        stats.update(shannon_entropy(generate_password(prk, i)))
+        stats.update(compute_all_entropies(generate_password(prk, i)))
     summary(stats)
 
 
