@@ -11,7 +11,7 @@ IKM_BYTES          = 32                 # 256-bit IKM (Argon2id output)
 ARGON2ID           = {'t_cost': 3, 'm_cost_kib': 65536, 'parallelism': 4, 'hash_len': 32}
 ENCODING           = 'Base91'
 RADIX              = 91
-OKM_BYTES          = 26                 # HKDF-Expand output length
+OKM_BYTES          = 27                 # HKDF-Expand output length
 INFO_TEMPLATE      = 'okm:v1:{okm_bytes}:proof of entropy{n}'
 TARGET_ENTROPY_BITS = 122.0
 
